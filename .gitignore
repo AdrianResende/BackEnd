@@ -1,0 +1,88 @@
+# Binários
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Arquivos de teste
+*.test
+
+# Output do build do Go
+*.out
+
+# Dependency directories (vendor tree com Go modules)
+vendor/
+
+# Go workspace file
+go.work
+
+# Arquivos temporários do editor
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.production
+.env.test
+
+# Arquivos de configuração específicos do sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos de backup
+*.bak
+*.backup
+*.orig
+*.tmp
+
+# Arquivos de coverage
+coverage.txt
+coverage.out
+*.cover
+
+# Arquivos de debug
+debug
+debug.test
+
+# Arquivos gerados pelo Air (hot reload)
+tmp/
+.air.toml
+
+# Database files (se usar SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificados SSL
+*.pem
+*.key
+*.crt
+
+# Arquivos de profiling
+*.prof
+*.pprof
+
+# Arquivos específicos do projeto
+smartpicks-backend
+smartpicks-backend.exe
+config.json
+*.pid
+
+# Documentação gerada
+docs/
+swagger.json
+swagger.yaml
+
+# Cache do Go
+go.sum.backup

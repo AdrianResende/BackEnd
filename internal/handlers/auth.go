@@ -11,6 +11,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Login godoc
+// @Summary Login de usuário
+// @Description Autentica um usuário com email e senha
+// @Tags Autenticação
+// @Accept json
+// @Produce json
+// @Param loginData body models.UserLogin true "Dados de login"
+// @Success 200 {object} models.UserResponse "Login realizado com sucesso"
+// @Failure 400 {object} map[string]string "JSON inválido ou campos obrigatórios ausentes"
+// @Failure 401 {object} map[string]string "Credenciais inválidas"
+// @Router /login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 	var loginData models.UserLogin
 
@@ -49,7 +60,18 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userResponse)
 }
 
-// Register - Cadastro de novo usuário
+// Register godoc
+// @Summary Cadastro de usuário
+// @Description Cadastra um novo usuário no sistema
+// @Tags Autenticação
+// @Accept json
+// @Produce json
+// @Param userData body models.User true "Dados do usuário (perfil é opcional, padrão: 'user')"
+// @Success 201 {object} models.UserResponse "Usuário cadastrado com sucesso"
+// @Failure 400 {object} map[string]string "JSON inválido, campos obrigatórios ausentes ou perfil inválido"
+// @Failure 409 {object} map[string]string "Email ou CPF já cadastrado"
+// @Failure 500 {object} map[string]string "Erro interno do servidor"
+// @Router /register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 
@@ -135,7 +157,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userResponse)
 }
 
-// GetAllUsers - Listar todos os usuários cadastrados
+// GetAllUsers godoc
+// @Summary Listar todos os usuários
+// @Description Retorna a lista de todos os usuários cadastrados com informações de perfil e permissões
+// @Tags Usuários
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Lista de usuários com total e mensagem"
+// @Failure 500 {object} map[string]string "Erro interno do servidor"
+// @Router /users [get]
 func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT id, nome, email, cpf, DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento, 
@@ -182,7 +212,16 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CheckUsersTable - Verificar status da tabela users
+// CheckUsersTable godoc
+// @Summary Verificar status da tabela users
+// @Description Endpoint de debug para verificar se a tabela users existe e está funcionando
+// @Tags Debug
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Status da tabela users"
+// @Failure 404 {object} map[string]string "Tabela users não encontrada"
+// @Failure 500 {object} map[string]string "Erro interno do servidor"
+// @Router /users/check [get]
 func CheckUsersTable(w http.ResponseWriter, r *http.Request) {
 	// Verificar se a tabela existe
 	var tableName string
@@ -228,7 +267,17 @@ func CheckUsersTable(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CheckUserPermissions - Verificar permissões de um usuário específico
+// CheckUserPermissions godoc
+// @Summary Verificar permissões do usuário
+// @Description Verifica as permissões de um usuário específico baseado no email
+// @Tags Usuários
+// @Accept json
+// @Produce json
+// @Param email query string true "Email do usuário"
+// @Success 200 {object} map[string]interface{} "Informações do usuário e suas permissões"
+// @Failure 400 {object} map[string]string "Email é obrigatório"
+// @Failure 404 {object} map[string]string "Usuário não encontrado"
+// @Router /users/permissions [get]
 func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	// Obter email do usuário dos parâmetros da query
 	email := r.URL.Query().Get("email")
@@ -267,7 +316,17 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetUsersByProfile - Listar usuários por perfil
+// GetUsersByProfile godoc
+// @Summary Listar usuários por perfil
+// @Description Retorna usuários filtrados por perfil (admin ou user)
+// @Tags Usuários
+// @Accept json
+// @Produce json
+// @Param profile query string true "Perfil do usuário" Enums(admin, user)
+// @Success 200 {object} map[string]interface{} "Lista de usuários do perfil especificado"
+// @Failure 400 {object} map[string]string "Parâmetro profile obrigatório ou perfil inválido"
+// @Failure 500 {object} map[string]string "Erro interno do servidor"
+// @Router /users/profile [get]
 func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 	profile := r.URL.Query().Get("profile")
 	if profile == "" {

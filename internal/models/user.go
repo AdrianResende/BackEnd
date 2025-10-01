@@ -15,10 +15,10 @@ type User struct {
 	ID             int       `json:"id"`
 	Nome           string    `json:"nome"`
 	Email          string    `json:"email"`
-	Password       string    `json:"password,omitempty"` // omitempty para não retornar senha nos responses
+	Password       string    `json:"password,omitempty"`
 	CPF            string    `json:"cpf"`
-	DataNascimento string    `json:"data_nascimento"` // Formato: YYYY-MM-DD
-	Perfil         string    `json:"perfil"`          // ENUM: 'admin', 'user'
+	DataNascimento string    `json:"data_nascimento"`
+	Perfil         string    `json:"perfil"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
