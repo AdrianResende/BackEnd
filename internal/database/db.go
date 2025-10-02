@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -19,7 +20,9 @@ func Connect() {
 	dbPort := getEnv("DB_PORT", "3306")
 	dbName := getEnv("DB_NAME", "smartpicks")
 
-	dsn := dbUser + ":" + dbPassword + "@tcp(" + dbHost + ":" + dbPort + ")/" + dbName
+	// Habilita parseTime para mapear DATE/DATETIME/TIMESTAMP em time.Time,
+	// define charset e localização para evitar problemas de fuso/encoding
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&loc=Local", dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	var err error
 	DB, err = sql.Open("mysql", dsn)
