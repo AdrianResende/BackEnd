@@ -2,13 +2,11 @@ package models
 
 import "time"
 
-// Constantes para perfis de usuário
 const (
 	PERFIL_ADMIN = "admin"
 	PERFIL_USER  = "user"
 )
 
-// ValidPerfis lista os perfis válidos
 var ValidPerfis = []string{PERFIL_ADMIN, PERFIL_USER}
 
 type User struct {
@@ -41,7 +39,6 @@ type UserResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-// IsValidPerfil verifica se o perfil é válido
 func IsValidPerfil(perfil string) bool {
 	for _, validPerfil := range ValidPerfis {
 		if perfil == validPerfil {
@@ -51,17 +48,14 @@ func IsValidPerfil(perfil string) bool {
 	return false
 }
 
-// HasAdminPermission verifica se o usuário tem permissão de admin
 func (u *User) HasAdminPermission() bool {
 	return u.Perfil == PERFIL_ADMIN
 }
 
-// HasUserPermission verifica se o usuário tem permissão de user ou superior
 func (u *User) HasUserPermission() bool {
 	return u.Perfil == PERFIL_USER || u.Perfil == PERFIL_ADMIN
 }
 
-// ToUserResponse converte User para UserResponse com verificações de permissão
 func (u *User) ToUserResponse() UserResponse {
 	return UserResponse{
 		ID:             u.ID,
