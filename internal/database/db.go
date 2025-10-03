@@ -12,16 +12,12 @@ import (
 var DB *sql.DB
 
 func Connect() {
-	// TODO: Implementar carregamento de variáveis de ambiente
-	// Por enquanto, usando configuração padrão
 	dbUser := getEnv("DB_USER", "root")
 	dbPassword := getEnv("DB_PASSWORD", "1234")
 	dbHost := getEnv("DB_HOST", "127.0.0.1")
 	dbPort := getEnv("DB_PORT", "3306")
 	dbName := getEnv("DB_NAME", "smartpicks")
-
-	// Habilita parseTime para mapear DATE/DATETIME/TIMESTAMP em time.Time,
-	// define charset e localização para evitar problemas de fuso/encoding
+	// Formato do DSN: user:password@tcp(host:port)/dbname?param1=value1&param2=value2
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&loc=Local", dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	var err error
@@ -30,7 +26,6 @@ func Connect() {
 		log.Fatal("Erro ao conectar no MySQL:", err)
 	}
 
-	// Configurações de conexão
 	DB.SetMaxOpenConns(25)
 	DB.SetMaxIdleConns(25)
 

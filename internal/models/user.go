@@ -23,13 +23,11 @@ type User struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-// UserLogin representa os dados necessários para login
 type UserLogin struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// UserResponse representa os dados do usuário para retorno (sem senha)
 type UserResponse struct {
 	ID             int       `json:"id"`
 	Nome           string    `json:"nome"`
@@ -37,8 +35,8 @@ type UserResponse struct {
 	CPF            string    `json:"cpf"`
 	DataNascimento string    `json:"data_nascimento"`
 	Perfil         string    `json:"perfil"`
-	IsAdmin        bool      `json:"is_admin"`       // Verificação de permissão
-	HasPermission  bool      `json:"has_permission"` // Permissão para operações específicas
+	IsAdmin        bool      `json:"is_admin"`
+	HasPermission  bool      `json:"has_permission"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
