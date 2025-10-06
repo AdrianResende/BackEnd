@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -12,59 +11,67 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Helper function to send standardized error response
+func sendErrorResponse(w http.ResponseWriter, message string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"message": message})
+}
+
+// Helper function to check if user exists
+func userExists(field, value string) bool {
+	var count int
+	query := "SELECT COUNT(*) FROM users WHERE " + field + "=?"
+	database.DB.QueryRow(query, value).Scan(&count)
+	return count > 0
+}
+
 func Login(w http.ResponseWriter, r *http.Request) {
 	var loginData models.UserLogin
 
 	if err := json.NewDecoder(r.Body).Decode(&loginData); err != nil {
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		sendErrorResponse(w, "JSON inválido", http.StatusBadRequest)
 		return
 	}
 
 	if loginData.Email == "" || loginData.Password == "" {
-		http.Error(w, "Email e password são obrigatórios", http.StatusBadRequest)
+		sendErrorResponse(w, "Email e password são obrigatórios", http.StatusBadRequest)
 		return
 	}
 
-	var dbUser models.User
+	var user models.User
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, password, cpf,
 			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, created_at, updated_at 
+			   perfil, avatar, created_at, updated_at 
 		FROM users WHERE email=?`, loginData.Email).
-		Scan(&dbUser.ID, &dbUser.Nome, &dbUser.Email, &dbUser.Password,
-			&dbUser.CPF, &dbUser.DataNascimento, &dbUser.Perfil, &dbUser.CreatedAt, &dbUser.UpdatedAt)
+		Scan(&user.ID, &user.Nome, &user.Email, &user.Password,
+			&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		http.Error(w, "Usuário não encontrado", http.StatusUnauthorized)
+		sendErrorResponse(w, "Email ou senha incorretos", http.StatusUnauthorized)
 		return
 	}
 
-	if bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(loginData.Password)) != nil {
-		http.Error(w, "Senha inválida", http.StatusUnauthorized)
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginData.Password)) != nil {
+		sendErrorResponse(w, "Email ou senha incorretos", http.StatusUnauthorized)
 		return
 	}
-
-	userResponse := dbUser.ToUserResponse()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(userResponse)
+	json.NewEncoder(w).Encode(user.ToResponse())
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 
-	log.Printf("Register: Recebida requisição de registro")
-
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		log.Printf("Register: Erro ao decodificar JSON: %v", err)
-		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		sendErrorResponse(w, "Dados inválidos fornecidos", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("Register: Dados recebidos - Nome: %s, Email: %s, CPF: %s, Perfil: %s",
-		user.Nome, user.Email, user.CPF, user.Perfil)
-
+	// Validações básicas
 	if user.Nome == "" || user.Email == "" || user.Password == "" || user.CPF == "" || user.DataNascimento == "" {
-		http.Error(w, "Todos os campos são obrigatórios (nome, email, password, cpf, data_nascimento)", http.StatusBadRequest)
+		sendErrorResponse(w, "Todos os campos são obrigatórios", http.StatusBadRequest)
 		return
 	}
 
@@ -73,93 +80,82 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !models.IsValidPerfil(user.Perfil) {
-		http.Error(w, "Perfil inválido. Use 'admin' ou 'user'", http.StatusBadRequest)
+		sendErrorResponse(w, "Perfil inválido. Use 'admin' ou 'user'", http.StatusBadRequest)
 		return
 	}
 
-	var parsedDate time.Time
-	var parseErr error
-
-	parsedDate, parseErr = time.Parse("2006-01-02", user.DataNascimento)
-	if parseErr != nil {
-		if t2, err2 := time.Parse("02/01/2006", user.DataNascimento); err2 == nil {
-			parsedDate = t2
-		} else {
-			http.Error(w, "Formato de data inválido. Use 'YYYY-MM-DD' ou 'DD/MM/YYYY'", http.StatusBadRequest)
+	// Validar e normalizar data
+	parsedDate, err := time.Parse("2006-01-02", user.DataNascimento)
+	if err != nil {
+		if parsedDate, err = time.Parse("02/01/2006", user.DataNascimento); err != nil {
+			sendErrorResponse(w, "Formato de data inválido. Use 'YYYY-MM-DD' ou 'DD/MM/YYYY'", http.StatusBadRequest)
 			return
 		}
 	}
 	normalizedBirth := parsedDate.Format("2006-01-02")
 
-	var existingID int
-	err := database.DB.QueryRow("SELECT id FROM users WHERE email=?", user.Email).Scan(&existingID)
-	if err == nil {
-		http.Error(w, "Email já cadastrado", http.StatusConflict)
+	// Verificar se email ou CPF já existem
+	if userExists("email", user.Email) {
+		sendErrorResponse(w, "Email já cadastrado", http.StatusConflict)
 		return
 	}
 
-	err = database.DB.QueryRow("SELECT id FROM users WHERE cpf=?", user.CPF).Scan(&existingID)
-	if err == nil {
-		http.Error(w, "CPF já cadastrado", http.StatusConflict)
+	if userExists("cpf", user.CPF) {
+		sendErrorResponse(w, "CPF já cadastrado", http.StatusConflict)
 		return
 	}
 
+	// Hash da senha
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro interno do servidor", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Register: Tentando inserir usuário no banco")
+	// Inserir usuário
 	result, err := database.DB.Exec(`
-		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil) 
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		user.Nome, user.Email, string(hashedPassword), user.CPF, normalizedBirth, user.Perfil)
+		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar) 
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		user.Nome, user.Email, string(hashedPassword), user.CPF, normalizedBirth, user.Perfil, user.Avatar)
 	if err != nil {
-		log.Printf("Register: Erro ao inserir no banco: %v", err)
-		http.Error(w, "Erro ao cadastrar usuário: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao cadastrar usuário", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Register: Usuário inserido com sucesso")
 
 	userID, err := result.LastInsertId()
 	if err != nil {
-		http.Error(w, "Erro ao obter ID do usuário", http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao criar usuário", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Register: Buscando dados do usuário criado com ID: %d", userID)
+	// Buscar usuário criado
 	var newUser models.User
 	err = database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,
 			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, created_at, updated_at 
+			   perfil, avatar, created_at, updated_at 
 		FROM users WHERE id=?`, userID).
 		Scan(&newUser.ID, &newUser.Nome, &newUser.Email, &newUser.CPF,
-			&newUser.DataNascimento, &newUser.Perfil, &newUser.CreatedAt, &newUser.UpdatedAt)
+			&newUser.DataNascimento, &newUser.Perfil, &newUser.Avatar, &newUser.CreatedAt, &newUser.UpdatedAt)
 	if err != nil {
-		log.Printf("Register: Erro ao buscar dados do usuário: %v", err)
-		http.Error(w, "Erro ao buscar dados do usuário: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao buscar dados do usuário", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Register: Dados do usuário recuperados com sucesso")
-
-	userResponse := newUser.ToUserResponse()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(userResponse)
+	json.NewEncoder(w).Encode(newUser.ToResponse())
 }
 
 func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT id, nome, email, cpf, DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento, 
-		       perfil, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
+		       perfil, avatar, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
 		       DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
 		FROM users 
 		ORDER BY created_at DESC`)
 	if err != nil {
-		http.Error(w, "Erro ao buscar usuários: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao buscar usuários", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -170,7 +166,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		var createdAtStr, updatedAtStr string
 
 		err := rows.Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &createdAtStr, &updatedAtStr)
+			&user.DataNascimento, &user.Perfil, &user.Avatar, &createdAtStr, &updatedAtStr)
 		if err != nil {
 			http.Error(w, "Erro ao processar dados dos usuários: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -179,11 +175,11 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
 		user.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAtStr)
 
-		users = append(users, user.ToUserResponse())
+		users = append(users, user.ToResponse())
 	}
 
 	if err = rows.Err(); err != nil {
-		http.Error(w, "Erro na consulta: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro na consulta de usuários", http.StatusInternalServerError)
 		return
 	}
 
@@ -195,53 +191,10 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func CheckUsersTable(w http.ResponseWriter, r *http.Request) {
-
-	var tableName string
-	err := database.DB.QueryRow("SHOW TABLES LIKE 'users'").Scan(&tableName)
-	if err != nil {
-		http.Error(w, "Tabela users não encontrada: "+err.Error(), http.StatusNotFound)
-		return
-	}
-
-	var count int
-	err = database.DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
-	if err != nil {
-		http.Error(w, "Erro ao contar usuários: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	rows, err := database.DB.Query("DESCRIBE users")
-	if err != nil {
-		http.Error(w, "Erro ao verificar estrutura da tabela: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var columns []string
-	for rows.Next() {
-		var field, fieldType, null, key, defaultValue, extra string
-		err := rows.Scan(&field, &fieldType, &null, &key, &defaultValue, &extra)
-		if err != nil {
-			continue
-		}
-		columns = append(columns, field)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"table_exists": true,
-		"table_name":   tableName,
-		"users_count":  count,
-		"columns":      columns,
-		"message":      "Tabela users está funcionando corretamente",
-	})
-}
-
 func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {
-		http.Error(w, "Email é obrigatório", http.StatusBadRequest)
+		sendErrorResponse(w, "Email é obrigatório", http.StatusBadRequest)
 		return
 	}
 
@@ -249,54 +202,40 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,
 			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, created_at, updated_at 
+			   perfil, avatar, created_at, updated_at 
 		FROM users WHERE email=?`, email).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &user.CreatedAt, &user.UpdatedAt)
+			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		http.Error(w, "Usuário não encontrado", http.StatusNotFound)
+		sendErrorResponse(w, "Usuário não encontrado", http.StatusNotFound)
 		return
 	}
 
-	response := user.ToUserResponse()
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"user": response,
-		"permissions": map[string]bool{
-			"is_admin":       response.IsAdmin,
-			"has_permission": response.HasPermission,
-			"can_create":     response.HasPermission,
-			"can_read":       response.HasPermission,
-			"can_update":     response.IsAdmin,
-			"can_delete":     response.IsAdmin,
-			"can_manage_all": response.IsAdmin,
-		},
-		"message": "Permissões verificadas com sucesso",
-	})
+	json.NewEncoder(w).Encode(user.ToResponse())
 }
 
 func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 	profile := r.URL.Query().Get("profile")
 	if profile == "" {
-		http.Error(w, "Parâmetro 'profile' é obrigatório", http.StatusBadRequest)
+		sendErrorResponse(w, "Parâmetro 'profile' é obrigatório", http.StatusBadRequest)
 		return
 	}
 
 	if !models.IsValidPerfil(profile) {
-		http.Error(w, "Perfil inválido. Use 'admin' ou 'user'", http.StatusBadRequest)
+		sendErrorResponse(w, "Perfil inválido. Use 'admin' ou 'user'", http.StatusBadRequest)
 		return
 	}
 
 	rows, err := database.DB.Query(`
 		SELECT id, nome, email, cpf, DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento, 
-		       perfil, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
+		       perfil, avatar, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
 		       DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
 		FROM users 
 		WHERE perfil = ?
 		ORDER BY created_at DESC`, profile)
 	if err != nil {
-		http.Error(w, "Erro ao buscar usuários: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao buscar usuários por perfil", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -307,9 +246,9 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 		var createdAtStr, updatedAtStr string
 
 		err := rows.Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &createdAtStr, &updatedAtStr)
+			&user.DataNascimento, &user.Perfil, &user.Avatar, &createdAtStr, &updatedAtStr)
 		if err != nil {
-			http.Error(w, "Erro ao processar dados dos usuários: "+err.Error(), http.StatusInternalServerError)
+			sendErrorResponse(w, "Erro ao processar dados dos usuários", http.StatusInternalServerError)
 			return
 		}
 
@@ -317,7 +256,7 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 		user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
 		user.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAtStr)
 
-		users = append(users, user.ToUserResponse())
+		users = append(users, user.ToResponse())
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -326,5 +265,76 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 		"total":   len(users),
 		"profile": profile,
 		"message": "Usuários encontrados com sucesso",
+	})
+}
+
+func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
+	var requestData struct {
+		UserID int    `json:"user_id"`
+		Avatar string `json:"avatar"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		sendErrorResponse(w, "Dados inválidos fornecidos", http.StatusBadRequest)
+		return
+	}
+
+	if requestData.UserID <= 0 {
+		sendErrorResponse(w, "ID do usuário é obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	// Validar tamanho do avatar (aceitar até ~5MB em base64)
+	if requestData.Avatar != "" {
+		// Base64 aumenta ~33% o tamanho. 5MB binário ~ 6.7MB base64. Usamos 7MB como margem.
+		const maxBase64Len = 7 * 1024 * 1024 // ~7MB
+		if len(requestData.Avatar) > maxBase64Len {
+			sendErrorResponse(w, "Avatar muito grande. Máximo 5MB", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Atualizar avatar no banco
+	var avatarPtr *string
+	if requestData.Avatar != "" {
+		avatarPtr = &requestData.Avatar
+	}
+
+	result, err := database.DB.Exec("UPDATE users SET avatar = ? WHERE id = ?", avatarPtr, requestData.UserID)
+	if err != nil {
+		sendErrorResponse(w, "Erro na query SQL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Verificar se alguma linha foi afetada
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		sendErrorResponse(w, "Erro ao verificar linhas afetadas: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		sendErrorResponse(w, "Usuário não encontrado ou não foi possível atualizar", http.StatusNotFound)
+		return
+	}
+
+	// Buscar usuário atualizado
+	var user models.User
+	err = database.DB.QueryRow(`
+		SELECT id, nome, email, cpf,
+			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
+			   perfil, avatar, created_at, updated_at 
+		FROM users WHERE id=?`, requestData.UserID).
+		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
+			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		sendErrorResponse(w, "Usuário não encontrado", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"user":    user.ToResponse(),
+		"message": "Avatar atualizado com sucesso",
 	})
 }

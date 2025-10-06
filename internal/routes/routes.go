@@ -35,13 +35,15 @@ func RegisterRoutes(r *mux.Router) {
 
 	api := r.PathPrefix("/api").Subrouter()
 
+	// Rotas principais da API
 	api.HandleFunc("/login", handlers.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/register", handlers.Register).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users", handlers.GetAllUsers).Methods("GET", "OPTIONS")
-	api.HandleFunc("/users/check", handlers.CheckUsersTable).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/permissions", handlers.CheckUserPermissions).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/profile", handlers.GetUsersByProfile).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/avatar", handlers.UpdateAvatar).Methods("POST", "PUT", "OPTIONS")
 
+	// Rotas do sistema
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "API rodando", "version": "1.0.0"}`))
@@ -52,6 +54,7 @@ func RegisterRoutes(r *mux.Router) {
 		w.Write([]byte(`{"status": "healthy"}`))
 	}).Methods("GET")
 
+	// Documentação Swagger
 	r.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		http.ServeFile(w, r, "./docs/swagger.json")
@@ -60,22 +63,5 @@ func RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		http.ServeFile(w, r, "./swagger.html")
-	})
-
-	r.HandleFunc("/swagger/index.html", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		http.ServeFile(w, r, "./swagger.html")
-	})
-
-	// Rota para testar CORS
-	r.HandleFunc("/test-cors", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		http.ServeFile(w, r, "./test-cors.html")
-	})
-
-	// Handler de teste simples
-	r.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status": "test ok", "method": "` + r.Method + `"}`))
 	})
 }

@@ -17,6 +17,7 @@ type User struct {
 	CPF            string    `json:"cpf"`
 	DataNascimento string    `json:"data_nascimento"`
 	Perfil         string    `json:"perfil"`
+	Avatar         *string   `json:"avatar,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -33,8 +34,8 @@ type UserResponse struct {
 	CPF            string    `json:"cpf"`
 	DataNascimento string    `json:"data_nascimento"`
 	Perfil         string    `json:"perfil"`
+	Avatar         *string   `json:"avatar,omitempty"`
 	IsAdmin        bool      `json:"is_admin"`
-	HasPermission  bool      `json:"has_permission"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -48,15 +49,11 @@ func IsValidPerfil(perfil string) bool {
 	return false
 }
 
-func (u *User) HasAdminPermission() bool {
+func (u *User) IsAdmin() bool {
 	return u.Perfil == PERFIL_ADMIN
 }
 
-func (u *User) HasUserPermission() bool {
-	return u.Perfil == PERFIL_USER || u.Perfil == PERFIL_ADMIN
-}
-
-func (u *User) ToUserResponse() UserResponse {
+func (u *User) ToResponse() UserResponse {
 	return UserResponse{
 		ID:             u.ID,
 		Nome:           u.Nome,
@@ -64,8 +61,8 @@ func (u *User) ToUserResponse() UserResponse {
 		CPF:            u.CPF,
 		DataNascimento: u.DataNascimento,
 		Perfil:         u.Perfil,
-		IsAdmin:        u.HasAdminPermission(),
-		HasPermission:  u.HasUserPermission(),
+		Avatar:         u.Avatar,
+		IsAdmin:        u.IsAdmin(),
 		CreatedAt:      u.CreatedAt,
 		UpdatedAt:      u.UpdatedAt,
 	}
