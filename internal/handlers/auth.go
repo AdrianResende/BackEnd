@@ -11,14 +11,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Helper function to send standardized error response
 func sendErrorResponse(w http.ResponseWriter, message string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"message": message})
 }
 
-// Helper function to check if user exists
 func userExists(field, value string) bool {
 	var count int
 	query := "SELECT COUNT(*) FROM users WHERE " + field + "=?"
@@ -69,7 +67,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validações básicas
 	if user.Nome == "" || user.Email == "" || user.Password == "" || user.CPF == "" || user.DataNascimento == "" {
 		sendErrorResponse(w, "Todos os campos são obrigatórios", http.StatusBadRequest)
 		return
@@ -84,7 +81,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar e normalizar data
 	parsedDate, err := time.Parse("2006-01-02", user.DataNascimento)
 	if err != nil {
 		if parsedDate, err = time.Parse("02/01/2006", user.DataNascimento); err != nil {
@@ -93,8 +89,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	normalizedBirth := parsedDate.Format("2006-01-02")
-
-	// Verificar se email ou CPF já existem
 	if userExists("email", user.Email) {
 		sendErrorResponse(w, "Email já cadastrado", http.StatusConflict)
 		return
@@ -105,14 +99,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash da senha
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		sendErrorResponse(w, "Erro interno do servidor", http.StatusInternalServerError)
 		return
 	}
 
-	// Inserir usuário
 	result, err := database.DB.Exec(`
 		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar) 
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -128,7 +120,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Buscar usuário criado
 	var newUser models.User
 	err = database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,
@@ -252,7 +243,6 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Converter strings para time.Time
 		user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
 		user.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAtStr)
 
@@ -284,17 +274,14 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar tamanho do avatar (aceitar até ~5MB em base64)
 	if requestData.Avatar != "" {
-		// Base64 aumenta ~33% o tamanho. 5MB binário ~ 6.7MB base64. Usamos 7MB como margem.
-		const maxBase64Len = 7 * 1024 * 1024 // ~7MB
+		const maxBase64Len = 7 * 1024 * 1024
 		if len(requestData.Avatar) > maxBase64Len {
 			sendErrorResponse(w, "Avatar muito grande. Máximo 5MB", http.StatusBadRequest)
 			return
 		}
 	}
 
-	// Atualizar avatar no banco
 	var avatarPtr *string
 	if requestData.Avatar != "" {
 		avatarPtr = &requestData.Avatar
@@ -306,7 +293,6 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verificar se alguma linha foi afetada
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		sendErrorResponse(w, "Erro ao verificar linhas afetadas: "+err.Error(), http.StatusInternalServerError)
@@ -318,7 +304,6 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Buscar usuário atualizado
 	var user models.User
 	err = database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,

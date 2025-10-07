@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	_ "smartpicks-backend/docs" // Import para registrar documentação Swagger
+	_ "smartpicks-backend/docs"
 	"smartpicks-backend/internal/routes"
 
 	"github.com/gorilla/mux"
@@ -15,7 +15,6 @@ func main() {
 	r := mux.NewRouter()
 	routes.RegisterRoutes(r)
 
-	// Permite configurar a porta via variável de ambiente ou usa 8080 como padrão
 	port := getEnv("PORT", "8080")
 
 	log.Printf("Servidor rodando na porta %s", port)
