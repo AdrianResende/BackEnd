@@ -11,13 +11,10 @@ import (
 
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// CORS simplificado para debug
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:9000")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		// Responder a requisições OPTIONS (preflight)
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -30,12 +27,10 @@ func enableCORS(next http.Handler) http.Handler {
 func RegisterRoutes(r *mux.Router) {
 	database.Connect()
 
-	// Aplicar CORS globalmente
 	r.Use(enableCORS)
 
 	api := r.PathPrefix("/api").Subrouter()
 
-	// Rotas principais da API
 	api.HandleFunc("/login", handlers.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/register", handlers.Register).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users", handlers.GetAllUsers).Methods("GET", "OPTIONS")
@@ -43,7 +38,6 @@ func RegisterRoutes(r *mux.Router) {
 	api.HandleFunc("/users/profile", handlers.GetUsersByProfile).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/avatar", handlers.UpdateAvatar).Methods("POST", "PUT", "OPTIONS")
 
-	// Rotas do sistema
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "API rodando", "version": "1.0.0"}`))
@@ -54,7 +48,6 @@ func RegisterRoutes(r *mux.Router) {
 		w.Write([]byte(`{"status": "healthy"}`))
 	}).Methods("GET")
 
-	// Documentação Swagger
 	r.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		http.ServeFile(w, r, "./docs/swagger.json")
