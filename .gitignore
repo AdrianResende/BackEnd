@@ -79,10 +79,9 @@ smartpicks-backend.exe
 config.json
 *.pid
 
-# Documentação gerada
-docs/
-swagger.json
-swagger.yaml
+# Documentação (versionada para evitar erro de compilação em clones)
+# Se desejar gerar em CI, remova estes ignores e ajuste pipeline
+# Mantemos os arquivos versionados
 
 # Cache do Go
 go.sum.backup
