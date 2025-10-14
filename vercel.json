@@ -1,4 +1,4 @@
-{
+﻿{
   "version": 2,
   "builds": [
     {
@@ -8,11 +8,20 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/main.go"
+    },
+    {
       "src": "/(.*)",
       "dest": "/main.go"
     }
   ],
   "env": {
     "GO_ENV": "production"
+  },
+  "functions": {
+    "main.go": {
+      "maxDuration": 30
+    }
   }
 }
