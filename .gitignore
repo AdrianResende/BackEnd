@@ -85,3 +85,4 @@ config.json
 
 # Cache do Go
 go.sum.backup
+.vercel
