@@ -19,7 +19,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		"https://smartpicks-88709.firebaseapp.com",
 		"http://localhost:9000", // Para desenvolvimento local
 	}
-	
+
 	// Verificar se a origem está permitida
 	isAllowed := false
 	for _, allowedOrigin := range allowedOrigins {
@@ -29,12 +29,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	
+
 	// Se não estiver na lista, permitir qualquer origem (remova isso se quiser mais segurança)
 	if !isAllowed && origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin, Accept")
