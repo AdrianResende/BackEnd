@@ -11,16 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Login @Summary Login de usuário
-// @Description Autentica um usuário com email e senha
-// @Tags Autenticação
-// @Accept json
-// @Produce json
-// @Param loginData body models.UserLogin true "Dados de login"
-// @Success 200 {object} models.UserResponse "Login realizado com sucesso"
-// @Failure 400 {object} map[string]string "JSON inválido ou campos obrigatórios ausentes"
-// @Failure 401 {object} map[string]string "Credenciais inválidas"
-// @Router /login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 	var loginData models.UserLogin
 
@@ -55,17 +45,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	sendSuccessResponse(w, user.ToResponse())
 }
 
-// Register @Summary Cadastro de usuário
-// @Description Cadastra um novo usuário no sistema
-// @Tags Autenticação
-// @Accept json
-// @Produce json
-// @Param userData body models.User true "Dados do usuário (perfil é opcional, padrão: 'user')"
-// @Success 201 {object} models.UserResponse "Usuário cadastrado com sucesso"
-// @Failure 400 {object} map[string]string "JSON inválido, campos obrigatórios ausentes ou perfil inválido"
-// @Failure 409 {object} map[string]string "Email ou CPF já cadastrado"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 

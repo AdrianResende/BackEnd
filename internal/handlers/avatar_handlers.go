@@ -8,18 +8,6 @@ import (
 	"smartpicks-backend/internal/models"
 )
 
-// UpdateAvatar @Summary Atualizar avatar do usuário
-// @Description Atualiza o avatar de um usuário específico
-// @Tags Avatar
-// @Accept json
-// @Produce json
-// @Param avatarData body map[string]interface{} true "Dados do avatar (user_id e avatar)"
-// @Success 200 {object} map[string]interface{} "Avatar atualizado com sucesso"
-// @Failure 400 {object} map[string]string "Dados inválidos fornecidos"
-// @Failure 404 {object} map[string]string "Usuário não encontrado"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /users/avatar [post]
-// @Router /users/avatar [put]
 func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 	var requestData struct {
 		UserID int    `json:"user_id"`
@@ -85,17 +73,6 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DeleteAvatar @Summary Remover avatar do usuário
-// @Description Remove o avatar de um usuário específico
-// @Tags Avatar
-// @Accept json
-// @Produce json
-// @Param deleteData body map[string]interface{} true "Dados para remoção (user_id)"
-// @Success 200 {object} map[string]string "Avatar removido com sucesso"
-// @Failure 400 {object} map[string]string "Dados inválidos fornecidos"
-// @Failure 404 {object} map[string]string "Usuário não encontrado"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /users/avatar [delete]
 func DeleteAvatar(w http.ResponseWriter, r *http.Request) {
 	var requestData struct {
 		UserID int `json:"user_id"`
@@ -111,7 +88,6 @@ func DeleteAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verificar se o usuário existe
 	var userExists bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", requestData.UserID).Scan(&userExists)
 	if err != nil {
@@ -124,7 +100,6 @@ func DeleteAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Remover o avatar (definir como NULL)
 	result, err := database.DB.Exec("UPDATE users SET avatar = NULL WHERE id = $1", requestData.UserID)
 	if err != nil {
 		sendErrorResponse(w, "Erro na query SQL: "+err.Error(), http.StatusInternalServerError)

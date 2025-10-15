@@ -7,14 +7,6 @@ import (
 	"smartpicks-backend/internal/models"
 )
 
-// GetAllUsers @Summary Listar todos os usuários
-// @Description Retorna a lista de todos os usuários cadastrados com informações de perfil e permissões
-// @Tags Usuários
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]interface{} "Lista de usuários com total e mensagem"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /users [get]
 func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT id, nome, email, cpf,
@@ -41,8 +33,6 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// timestamps already scanned into time.Time for Postgres
-
 		users = append(users, user.ToResponse())
 	}
 
@@ -53,16 +43,6 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CheckUserPermissions @Summary Verificar permissões do usuário
-// @Description Verifica as permissões de um usuário específico baseado no email
-// @Tags Usuários
-// @Accept json
-// @Produce json
-// @Param email query string true "Email do usuário"
-// @Success 200 {object} map[string]interface{} "Informações do usuário e suas permissões"
-// @Failure 400 {object} map[string]string "Email é obrigatório"
-// @Failure 404 {object} map[string]string "Usuário não encontrado"
-// @Router /users/permissions [get]
 func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {
@@ -86,16 +66,6 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	sendSuccessResponse(w, user.ToResponse())
 }
 
-// GetUsersByProfile @Summary Listar usuários por perfil
-// @Description Retorna usuários filtrados por perfil (admin ou user)
-// @Tags Usuários
-// @Accept json
-// @Produce json
-// @Param profile query string true "Perfil do usuário" Enums(admin, user)
-// @Success 200 {object} map[string]interface{} "Lista de usuários do perfil especificado"
-// @Failure 400 {object} map[string]string "Parâmetro profile obrigatório ou perfil inválido"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /users/profile [get]
 func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 	profile := r.URL.Query().Get("profile")
 	if profile == "" {
