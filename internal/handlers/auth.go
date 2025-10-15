@@ -37,9 +37,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, password, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE email=?`, loginData.Email).
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at 
+		FROM users WHERE email = $1`, loginData.Email).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.Password,
 			&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -114,27 +114,23 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := database.DB.Exec(`
+	var userID int
+	err = database.DB.QueryRow(`
 		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		user.Nome, user.Email, string(hashedPassword), user.CPF, user.DataNascimento, user.Perfil, user.Avatar)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id`,
+		user.Nome, user.Email, string(hashedPassword), user.CPF, user.DataNascimento, user.Perfil, user.Avatar).Scan(&userID)
 
 	if err != nil {
 		sendErrorResponse(w, "Erro ao cadastrar usuário", http.StatusInternalServerError)
 		return
 	}
 
-	userID, err := result.LastInsertId()
-	if err != nil {
-		sendErrorResponse(w, "Erro ao obter ID do usuário", http.StatusInternalServerError)
-		return
-	}
-
 	err = database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE id=?`, userID).
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at 
+		FROM users WHERE id = $1`, userID).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 

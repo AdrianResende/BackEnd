@@ -1,21 +1,24 @@
-﻿# Arquivos a serem ignorados no deploy Vercel
+﻿# Arquivos de ambiente e logs
 .env
 .env.local
+.env.vercel
 *.log
-.DS_Store
-.git/
-*.md
-*.exe
 
-# Scripts de banco de dados
-database_setup_simple.sql
-database_setup_postgres.sql
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
 
 # Arquivos de desenvolvimento local
 main.go
-internal/
+*.exe
+
+# Scripts de banco de dados
+database_setup_*.sql
 
 # Documentação
+*.md
 docs/
 swagger.html
-README.md

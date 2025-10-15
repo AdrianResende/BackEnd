@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"smartpicks-backend/internal/database"
 	"smartpicks-backend/internal/models"
@@ -18,12 +17,12 @@ import (
 // @Router /users [get]
 func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
-		SELECT id, nome, email, cpf, 
-		       DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento, 
-		       perfil, avatar,
-		       DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
-		       DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
-		FROM users 
+		SELECT id, nome, email, cpf,
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, COALESCE(avatar, '') as avatar,
+			   created_at,
+			   updated_at
+		FROM users
 		ORDER BY created_at DESC`)
 	if err != nil {
 		sendErrorResponse(w, "Erro ao buscar usuários", http.StatusInternalServerError)
@@ -34,18 +33,15 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.UserResponse
 	for rows.Next() {
 		var user models.User
-		var createdAtStr, updatedAtStr string
-
 		err := rows.Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar,
-			&createdAtStr, &updatedAtStr)
+			&user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			sendErrorResponse(w, "Erro ao processar dados dos usuários", http.StatusInternalServerError)
 			return
 		}
 
-		user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
-		user.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAtStr)
+		// timestamps already scanned into time.Time for Postgres
 
 		users = append(users, user.ToResponse())
 	}
@@ -77,9 +73,9 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE email=?`, email).
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at 
+		FROM users WHERE email = $1`, email).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -113,11 +109,11 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := database.DB.Query(`
-		SELECT id, nome, email, cpf, DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento, 
-		       perfil, avatar, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
-		       DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
+		SELECT id, nome, email, cpf,
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at
 		FROM users 
-		WHERE perfil = ?
+		WHERE perfil = $1
 		ORDER BY created_at DESC`, profile)
 	if err != nil {
 		sendErrorResponse(w, "Erro ao buscar usuários por perfil", http.StatusInternalServerError)
@@ -128,17 +124,13 @@ func GetUsersByProfile(w http.ResponseWriter, r *http.Request) {
 	var users []models.UserResponse
 	for rows.Next() {
 		var user models.User
-		var createdAtStr, updatedAtStr string
 
 		err := rows.Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &user.Avatar, &createdAtStr, &updatedAtStr)
+			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			sendErrorResponse(w, "Erro ao processar dados dos usuários", http.StatusInternalServerError)
 			return
 		}
-
-		user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
-		user.UpdatedAt, _ = time.Parse("2006-01-02 15:04:05", updatedAtStr)
 
 		users = append(users, user.ToResponse())
 	}

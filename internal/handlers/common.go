@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"smartpicks-backend/internal/database"
@@ -20,10 +21,10 @@ func sendSuccessResponse(w http.ResponseWriter, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// userExists verifica se um usuário existe baseado em um campo específico
+// userExists verifica se um usuário existe baseado em um campo específico (PostgreSQL)
 func userExists(field, value string) bool {
 	var count int
-	query := "SELECT COUNT(*) FROM users WHERE " + field + "=?"
+	query := fmt.Sprintf("SELECT COUNT(*) FROM users WHERE %s = $1", field)
 	database.DB.QueryRow(query, value).Scan(&count)
 	return count > 0
 }
