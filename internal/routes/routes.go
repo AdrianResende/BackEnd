@@ -56,14 +56,4 @@ func RegisterRoutes(r *mux.Router) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "healthy"}`))
 	}).Methods("GET")
-
-	r.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		http.ServeFile(w, r, "./docs/swagger.json")
-	})
-
-	r.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		http.ServeFile(w, r, "./swagger.html")
-	})
 }
