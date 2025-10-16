@@ -38,6 +38,10 @@ func RegisterRoutes(r *mux.Router) {
 	api.HandleFunc("/users/profile", handlers.GetUsersByProfile).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/avatar", handlers.UpdateAvatar).Methods("POST", "PUT", "OPTIONS")
 	api.HandleFunc("/users/avatar", handlers.DeleteAvatar).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/palpites", handlers.PostPalpite).Methods("POST", "OPTIONS")
+	api.HandleFunc("/palpites", handlers.PostPalpite).Methods("POST", "OPTIONS")
+	api.HandleFunc("/palpites", handlers.GetPalpites).Methods("GET", "OPTIONS")
+	api.HandleFunc("/palpites/{id}", handlers.GetPalpiteByID).Methods("GET", "OPTIONS")
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
