@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -71,7 +70,6 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 
 	email := r.URL.Query().Get("email")
-	log.Printf("[CheckUserPermissions] Email recebido: '%s'", email)
 	if email == "" {
 		sendErrorResponse(w, "Email é obrigatório", http.StatusBadRequest)
 		return
