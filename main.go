@@ -8,9 +8,15 @@ import (
 	"smartpicks-backend/internal/routes"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Carregar variáveis do arquivo .env (apenas para desenvolvimento local)
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️  Arquivo .env não encontrado, usando variáveis de ambiente do sistema")
+	}
+
 	r := mux.NewRouter()
 	routes.RegisterRoutes(r)
 

@@ -24,7 +24,20 @@ func sendSuccessResponse(w http.ResponseWriter, data interface{}) {
 // userExists verifica se um usuário existe baseado em um campo específico (PostgreSQL)
 func userExists(field, value string) bool {
 	var count int
+<<<<<<< HEAD
 	query := fmt.Sprintf("SELECT COUNT(*) FROM users WHERE %s = $1", field)
 	database.DB.QueryRow(query, value).Scan(&count)
+=======
+	// Usa $1 para Postgres e valida o nome do campo para evitar SQL Injection
+	allowedFields := map[string]bool{"email": true, "cpf": true}
+	if !allowedFields[field] {
+		return false
+	}
+	query := "SELECT COUNT(*) FROM users WHERE " + field + " = $1"
+	err := database.DB.QueryRow(query, value).Scan(&count)
+	if err != nil {
+		return false
+	}
+>>>>>>> development
 	return count > 0
 }
