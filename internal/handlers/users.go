@@ -53,17 +53,10 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	err := database.DB.QueryRow(`
-<<<<<<< HEAD
 		SELECT id, nome, email, cpf,
 			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
 			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at 
 		FROM users WHERE email = $1`, email).
-=======
-        SELECT id, nome, email, cpf,
-               TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
-               perfil, avatar, created_at, updated_at
-        FROM users WHERE email=$1`, email).
->>>>>>> development
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
