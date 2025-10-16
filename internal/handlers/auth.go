@@ -12,23 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-<<<<<<< HEAD
-=======
-// ==========================================
-// LOGIN HANDLER
-// ==========================================
-
-// Login @Summary Login de usuário
-// @Description Autentica um usuário com email e senha
-// @Tags Autenticação
-// @Accept json
-// @Produce json
-// @Param loginData body models.UserLogin true "Dados de login"
-// @Success 200 {object} models.UserResponse "Login realizado com sucesso"
-// @Failure 400 {object} map[string]string "JSON inválido ou campos obrigatórios ausentes"
-// @Failure 401 {object} map[string]string "Credenciais inválidas"
-// @Router /login [post]
->>>>>>> development
 func Login(w http.ResponseWriter, r *http.Request) {
 	var loginData models.UserLogin
 
@@ -46,21 +29,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, password, cpf,
 			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
-<<<<<<< HEAD
 			   perfil, COALESCE(avatar, '') as avatar, created_at, updated_at 
 		FROM users WHERE email = $1`, loginData.Email).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.Password,
 			&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
-=======
-			   perfil, avatar, created_at, updated_at
-		FROM users WHERE email=$1
-	`, loginData.Email).Scan(
-		&user.ID, &user.Nome, &user.Email, &user.Password,
-		&user.CPF, &user.DataNascimento, &user.Perfil,
-		&user.Avatar, &user.CreatedAt, &user.UpdatedAt,
-	)
-
->>>>>>> development
 	if err != nil {
 		log.Printf("Erro ao buscar usuário: %v", err)
 		sendErrorResponse(w, "Email ou senha incorretos", http.StatusUnauthorized)
@@ -75,24 +47,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	sendSuccessResponse(w, user.ToResponse())
 }
 
-<<<<<<< HEAD
-=======
-// ==========================================
-// REGISTER HANDLER
-// ==========================================
-
-// Register @Summary Cadastro de usuário
-// @Description Cadastra um novo usuário no sistema
-// @Tags Autenticação
-// @Accept json
-// @Produce json
-// @Param userData body models.User true "Dados do usuário (perfil é opcional, padrão: 'user')"
-// @Success 201 {object} models.UserResponse "Usuário cadastrado com sucesso"
-// @Failure 400 {object} map[string]string "JSON inválido, campos obrigatórios ausentes ou perfil inválido"
-// @Failure 409 {object} map[string]string "Email ou CPF já cadastrado"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /register [post]
->>>>>>> development
 func Register(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 
@@ -142,7 +96,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-<<<<<<< HEAD
 	var userID int
 	err = database.DB.QueryRow(`
 		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar)
@@ -162,14 +115,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		FROM users WHERE id = $1`, userID).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
-=======
-	// Inserir usuário com RETURNING id (Postgres)
-	err = database.DB.QueryRow(`
-		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id
-	`, user.Nome, user.Email, string(hashedPassword), user.CPF, user.DataNascimento, user.Perfil, user.Avatar).Scan(&user.ID)
->>>>>>> development
 
 	if err != nil {
 		log.Printf("Erro ao cadastrar usuário: %v", err)
