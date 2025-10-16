@@ -1,34 +1,23 @@
-// handlers/upload.go
 package handlers
 
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"smartpicks-backend/internal/services"
 )
 
-// UploadImageHandler @Summary Fazer upload de imagem
-// @Description Faz upload de uma imagem e retorna a URL
-// @Tags Upload
-// @Accept multipart/form-data
-// @Produce json
-// @Param image formData file true "Arquivo de imagem"
-// @Success 200 {object} models.UploadResponse "Upload realizado com sucesso"
-// @Failure 400 {object} map[string]string "Erro no upload"
-// @Failure 500 {object} map[string]string "Erro interno do servidor"
-// @Router /upload [post]
+// UploadImageHandler faz upload direto para AWS S3
 func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendErrorResponse(w, "Método não permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Limitar tamanho do arquivo (5MB)
 	const maxUploadSize = 5 << 20 // 5MB
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
@@ -37,7 +26,6 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Obter arquivo do form
 	file, handler, err := r.FormFile("image")
 	if err != nil {
 		sendErrorResponse(w, "Erro ao receber arquivo: "+err.Error(), http.StatusBadRequest)
@@ -45,14 +33,14 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Validar tipo do arquivo
+	// Validar tipo e extensão
 	buffer := make([]byte, 512)
 	_, err = file.Read(buffer)
 	if err != nil {
 		sendErrorResponse(w, "Erro ao ler arquivo", http.StatusBadRequest)
 		return
 	}
-	file.Seek(0, 0) // Voltar ao início do arquivo
+	file.Seek(0, 0)
 
 	contentType := http.DetectContentType(buffer)
 	allowedTypes := map[string]bool{
@@ -61,13 +49,11 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		"image/gif":  true,
 		"image/webp": true,
 	}
-
 	if !allowedTypes[contentType] {
-		sendErrorResponse(w, "Tipo de arquivo não suportado. Use JPEG, PNG, GIF ou WebP", http.StatusBadRequest)
+		sendErrorResponse(w, "Tipo de arquivo não suportado", http.StatusBadRequest)
 		return
 	}
 
-	// Validar extensão do arquivo
 	ext := strings.ToLower(filepath.Ext(handler.Filename))
 	allowedExts := map[string]bool{
 		".jpg":  true,
@@ -76,61 +62,34 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		".gif":  true,
 		".webp": true,
 	}
-
 	if !allowedExts[ext] {
 		sendErrorResponse(w, "Extensão de arquivo não permitida", http.StatusBadRequest)
 		return
 	}
 
-	// Gerar nome único para o arquivo
+	// Nome único
 	timestamp := time.Now().UnixNano()
 	newFileName := fmt.Sprintf("palpite_%d%s", timestamp, ext)
 
-	// Diretório de upload (criar se não existir)
-	uploadDir := "./uploads/palpites"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		sendErrorResponse(w, "Erro ao criar diretório: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	filePath := filepath.Join(uploadDir, newFileName)
-
-	// Salvar arquivo
-	dst, err := os.Create(filePath)
+	// Upload para S3
+	s3Service, err := services.NewS3Service()
 	if err != nil {
-		sendErrorResponse(w, "Erro ao salvar arquivo: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao configurar AWS S3: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
 
-	// Copiar arquivo
-	_, err = io.Copy(dst, file)
+	imageURL, err := s3Service.UploadFile(file, newFileName, contentType)
 	if err != nil {
-		sendErrorResponse(w, "Erro ao salvar arquivo: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(w, "Erro ao enviar para S3: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Retornar URL da imagem (ajuste conforme seu domínio)
-	imageURL := fmt.Sprintf("/uploads/palpites/%s", newFileName)
-
-	// Response de sucesso
+	// Resposta
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"image_url": imageURL,
-		"message":   "Upload realizado com sucesso",
+		"message":   "Upload realizado com sucesso para o S3",
 	})
-}
-
-// ServeUploadedFiles serve arquivos estáticos da pasta uploads
-func ServeUploadedFiles(w http.ResponseWriter, r *http.Request) {
-	// Remover o prefixo /uploads/ para obter o caminho do arquivo
-	filePath := strings.TrimPrefix(r.URL.Path, "/uploads/")
-
-	// Construir o caminho completo
-	fullPath := filepath.Join("./uploads", filePath)
-
-	// Servir arquivo
-	http.ServeFile(w, r, fullPath)
 }
