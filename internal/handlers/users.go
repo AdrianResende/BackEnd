@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -68,7 +69,9 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} map[string]string "Usuário não encontrado"
 // @Router /users/permissions [get]
 func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
+
 	email := r.URL.Query().Get("email")
+	log.Printf("[CheckUserPermissions] Email recebido: '%s'", email)
 	if email == "" {
 		sendErrorResponse(w, "Email é obrigatório", http.StatusBadRequest)
 		return
@@ -76,10 +79,10 @@ func CheckUserPermissions(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	err := database.DB.QueryRow(`
-		SELECT id, nome, email, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE email=?`, email).
+        SELECT id, nome, email, cpf,
+               TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+               perfil, avatar, created_at, updated_at
+        FROM users WHERE email=$1`, email).
 		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
 			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {

@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-
 	"smartpicks-backend/internal/database"
 	"smartpicks-backend/internal/models"
 )
@@ -49,7 +48,11 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 		avatarPtr = &requestData.Avatar
 	}
 
-	result, err := database.DB.Exec("UPDATE users SET avatar = ? WHERE id = ?", avatarPtr, requestData.UserID)
+	// Atualizar avatar usando PostgreSQL
+	result, err := database.DB.Exec(
+		"UPDATE users SET avatar = $1 WHERE id = $2",
+		avatarPtr, requestData.UserID,
+	)
 	if err != nil {
 		sendErrorResponse(w, "Erro na query SQL: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -68,12 +71,12 @@ func UpdateAvatar(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	err = database.DB.QueryRow(`
-		SELECT id, nome, email, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE id=?`, requestData.UserID).
-		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
+		SELECT id, nome, email, password, cpf,
+		       to_char(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+		       perfil, avatar, created_at, updated_at
+		FROM users WHERE id=$1`, requestData.UserID).
+		Scan(&user.ID, &user.Nome, &user.Email, &user.Password,
+			&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		sendErrorResponse(w, "Usuário não encontrado", http.StatusNotFound)
 		return
@@ -111,21 +114,27 @@ func DeleteAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verificar se o usuário existe
-	var userExists bool
-	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)", requestData.UserID).Scan(&userExists)
+	// Verificar se o usuário existe (PostgreSQL)
+	var exists bool
+	err := database.DB.QueryRow(
+		"SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)",
+		requestData.UserID,
+	).Scan(&exists)
 	if err != nil {
 		sendErrorResponse(w, "Erro ao verificar usuário: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if !userExists {
+	if !exists {
 		sendErrorResponse(w, "Usuário não encontrado", http.StatusNotFound)
 		return
 	}
 
 	// Remover o avatar (definir como NULL)
-	result, err := database.DB.Exec("UPDATE users SET avatar = NULL WHERE id = ?", requestData.UserID)
+	result, err := database.DB.Exec(
+		"UPDATE users SET avatar = NULL WHERE id = $1",
+		requestData.UserID,
+	)
 	if err != nil {
 		sendErrorResponse(w, "Erro na query SQL: "+err.Error(), http.StatusInternalServerError)
 		return

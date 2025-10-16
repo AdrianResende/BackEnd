@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ==========================================
+// LOGIN HANDLER
+// ==========================================
 
 // Login @Summary Login de usuário
 // @Description Autentica um usuário com email e senha
@@ -37,12 +42,17 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := database.DB.QueryRow(`
 		SELECT id, nome, email, password, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE email=?`, loginData.Email).
-		Scan(&user.ID, &user.Nome, &user.Email, &user.Password,
-			&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, avatar, created_at, updated_at
+		FROM users WHERE email=$1
+	`, loginData.Email).Scan(
+		&user.ID, &user.Nome, &user.Email, &user.Password,
+		&user.CPF, &user.DataNascimento, &user.Perfil,
+		&user.Avatar, &user.CreatedAt, &user.UpdatedAt,
+	)
+
 	if err != nil {
+		log.Printf("Erro ao buscar usuário: %v", err)
 		sendErrorResponse(w, "Email ou senha incorretos", http.StatusUnauthorized)
 		return
 	}
@@ -54,6 +64,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	sendSuccessResponse(w, user.ToResponse())
 }
+
+// ==========================================
+// REGISTER HANDLER
+// ==========================================
 
 // Register @Summary Cadastro de usuário
 // @Description Cadastra um novo usuário no sistema
@@ -88,15 +102,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar formato de data
+	// Validar formato da data
 	parsedDate, err := time.Parse("2006-01-02", user.DataNascimento)
 	if err != nil {
-		if parsedDate, err = time.Parse("02/01/2006", user.DataNascimento); err != nil {
+		parsedDate, err = time.Parse("02/01/2006", user.DataNascimento)
+		if err != nil {
 			sendErrorResponse(w, "Formato de data inválido. Use YYYY-MM-DD ou DD/MM/YYYY", http.StatusBadRequest)
 			return
 		}
-		user.DataNascimento = parsedDate.Format("2006-01-02")
 	}
+	user.DataNascimento = parsedDate.Format("2006-01-02")
 
 	if userExists("email", user.Email) {
 		sendErrorResponse(w, "Email já cadastrado", http.StatusConflict)
@@ -114,32 +129,34 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := database.DB.Exec(`
-		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		user.Nome, user.Email, string(hashedPassword), user.CPF, user.DataNascimento, user.Perfil, user.Avatar)
-
-	if err != nil {
-		sendErrorResponse(w, "Erro ao cadastrar usuário", http.StatusInternalServerError)
-		return
-	}
-
-	userID, err := result.LastInsertId()
-	if err != nil {
-		sendErrorResponse(w, "Erro ao obter ID do usuário", http.StatusInternalServerError)
-		return
-	}
-
+	// Inserir usuário com RETURNING id (Postgres)
 	err = database.DB.QueryRow(`
-		SELECT id, nome, email, cpf,
-			   DATE_FORMAT(data_nascimento, '%Y-%m-%d') as data_nascimento,
-			   perfil, avatar, created_at, updated_at 
-		FROM users WHERE id=?`, userID).
-		Scan(&user.ID, &user.Nome, &user.Email, &user.CPF,
-			&user.DataNascimento, &user.Perfil, &user.Avatar, &user.CreatedAt, &user.UpdatedAt)
+		INSERT INTO users (nome, email, password, cpf, data_nascimento, perfil, avatar)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id
+	`, user.Nome, user.Email, string(hashedPassword), user.CPF, user.DataNascimento, user.Perfil, user.Avatar).Scan(&user.ID)
 
 	if err != nil {
-		sendErrorResponse(w, "Erro ao buscar usuário cadastrado", http.StatusInternalServerError)
+		log.Printf("Erro ao cadastrar usuário: %v", err)
+		sendErrorResponse(w, "Erro ao cadastrar usuário: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Buscar usuário recém-criado
+	err = database.DB.QueryRow(`
+		SELECT id, nome, email, password, cpf,
+			   TO_CHAR(data_nascimento, 'YYYY-MM-DD') as data_nascimento,
+			   perfil, avatar, created_at, updated_at
+		FROM users WHERE id=$1
+	`, user.ID).Scan(
+		&user.ID, &user.Nome, &user.Email, &user.Password,
+		&user.CPF, &user.DataNascimento, &user.Perfil, &user.Avatar,
+		&user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		log.Printf("Erro ao buscar usuário cadastrado: %v", err)
+		sendErrorResponse(w, "Erro ao buscar usuário cadastrado: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
