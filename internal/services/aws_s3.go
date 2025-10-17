@@ -53,7 +53,6 @@ func (s *S3Service) UploadFile(file multipart.File, fileName string, contentType
 		Key:         aws.String(fileName),
 		Body:        bytes.NewReader(buf.Bytes()),
 		ContentType: aws.String(contentType),
-		ACL:         "public-read",
 	}
 
 	_, err = s.Client.PutObject(context.TODO(), input)

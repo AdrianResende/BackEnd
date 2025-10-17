@@ -11,7 +11,6 @@ import (
 	"smartpicks-backend/internal/services"
 )
 
-// UploadImageHandler faz upload direto para AWS S3
 func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendErrorResponse(w, "Método não permitido", http.StatusMethodNotAllowed)
@@ -67,7 +66,7 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Nome único
+	// Nome único do arquivo
 	timestamp := time.Now().UnixNano()
 	newFileName := fmt.Sprintf("palpite_%d%s", timestamp, ext)
 
@@ -84,7 +83,7 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resposta
+	// Resposta com a URL pública do S3
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
